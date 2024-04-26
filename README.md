@@ -36,9 +36,20 @@ dotnet test
 
 # Error description
 
-There is a difference behavior between Chromium and Firefox browser in Playwright when a server-side rendered web-application (here Blazor server app) switches from HTTP to websocket.
+There is a different behavior between Chromium and Firefox browser in Playwright when a server-side rendered web-application (here Blazor server app) switches from HTTP to websocket.
 
-Goal of the demo application is to render a website either in English or German depending on the Accept-Language header. E2E tests with Playwright .NET are created to ensure the correct language.
+Goal of the demo application is to render a website either in English or German depending on the Accept-Language header ('de' or 'en'). E2E tests with Playwright .NET are created to ensure the correct language.
+
+## Environment
+
+- .NET 8
+- Blazor (server-side rendering)
+- Playwright .NET 1.43.0
+- xUnit 2.5.3
+- Tested on:
+  - Windows 11 (10.0.22631)
+  - Ubuntu 22.04 (via WSL)
+  - same behavior
 
 ## Expected behavior
 
@@ -72,13 +83,15 @@ private BrowserNewContextOptions GetContextOptionsForEnglishBrowser()
 
 ## Actual behavior
 
-- The two test cases with Firefox passes as expected (Accept-Language header is respected all the time)
-- Chromium respects the localized context as the Accept-Language header is sent while website is loaded via HTTP
-- Chromium DOES NOT respect the localized context as the Accept-Language header is missing when Blazor application requests the switch to websocket (GET request with Upgrade: websocket header)
-- One test case with Chromium still passes (as English is requested and English is default language > so missing Accept-Language header doesn't influence test result)
-- Second test case with Chromium fails where German is requested via Accept-Language header:
-  - Website is first loaded in German via HTTP
-  - After a short time website switches to websocket and is loaded again with English as default language
+- Firefox:
+  - The two test cases with Firefox passes as expected (Accept-Language header is respected all the time)
+- Chromium:
+  - Chromium respects the localized context as the Accept-Language header is sent while website is loaded via HTTP
+  - Chromium DOES NOT respect the localized context as the Accept-Language header is missing when Blazor application requests the switch to websocket (GET request with Upgrade: websocket header)
+  - One test case with Chromium still passes (as English is requested and English is default language > so missing Accept-Language header doesn't influence the test result)
+  - Second test case with Chromium fails where German is requested via Accept-Language header:
+    - Website is first loaded in German via HTTP
+    - After a short time website switches to websocket and is loaded again with English as default language
 
 **Remarks**: 
 - Using web-application with a real Chrome browser doesn't show this behavior. Here is the Accept-Language header also in place during the switch from HTTP to websocket. So seems to be specific to Chromium in Playwright.
@@ -141,13 +154,13 @@ Content-Type: application/json
 Date: Fri, 26 Apr 2024 06:25:01 GMT
 Server: Kestrel
 
-{"negotiateVersion":1,"connectionId":"uYMdhp4qBq9DuQTP4RbqwA","connectionToken":"ZpYLLmiTPtA2eNaVVb7UNQ","availableTransports":[{"transport":"WebSockets","transferFormats":["Text","Binary"]},{"transport":"ServerSentEvents","transferFormats":["Text"]},{"transport":"LongPolling","transferFormats":["Text","Binary"]}]}
+{"negotiateVersion":1,"connectionId":"*********************","connectionToken":"":"*********************","","availableTransports":[{"transport":"WebSockets","transferFormats":["Text","Binary"]},{"transport":"ServerSentEvents","transferFormats":["Text"]},{"transport":"LongPolling","transferFormats":["Text","Binary"]}]}
 ```
 
 ```
 # Protocol switch to websocket (including Accept-Language header)
 
-GET /_blazor?id=ZpYLLmiTPtA2eNaVVb7UNQ HTTP/1.1
+GET /_blazor?id=************************ HTTP/1.1
 Host: localhost:5000
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0
 Accept: */*
@@ -156,7 +169,7 @@ Accept-Encoding: gzip, deflate, br
 Sec-WebSocket-Version: 13
 Origin: http://localhost:5000
 Sec-WebSocket-Extensions: permessage-deflate
-Sec-WebSocket-Key: lf1rKGCAr4thIDiz4mvnQw==
+Sec-WebSocket-Key: ************************
 Connection: keep-alive, Upgrade
 Sec-Fetch-Dest: empty
 Sec-Fetch-Mode: websocket
@@ -170,7 +183,7 @@ Connection: Upgrade
 Date: Fri, 26 Apr 2024 06:25:01 GMT
 Server: Kestrel
 Upgrade: websocket
-Sec-WebSocket-Accept: KvizSs0iAQCY4Wte1ZKFtkH81E4=
+Sec-WebSocket-Accept: ************************
 ```
 
 ### (2) Wrong behavior with Chromium in Playwright
@@ -209,36 +222,39 @@ X-Frame-Options: SAMEORIGIN
 ```
 # Negotiation of transport type (including Accept-Language header)
 
-GET /_framework/blazor.web.js HTTP/1.1
+POST /_blazor/negotiate?negotiateVersion=1 HTTP/1.1
 Host: localhost:5000
 Connection: keep-alive
+Content-Length: 0
+Cache-Control: max-age=0
 sec-ch-ua: "Chromium";v="124", "HeadlessChrome";v="124", "Not-A.Brand";v="99"
+X-Requested-With: XMLHttpRequest
 Accept-Language: en,de;q=0.9;q=0.9,en-GB;q=0.8;q=0.8,de-DE;q=0.7;q=0.7,en-US;q=0.6;q=0.6
 sec-ch-ua-mobile: ?0
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/124.0.6367.29 Safari/537.36
+X-SignalR-User-Agent: Microsoft SignalR/0.0 (0.0.0-DEV_BUILD; Unknown OS; Browser; Unknown Runtime Version)
 sec-ch-ua-platform: "Windows"
 Accept: */*
+Origin: http://localhost:5000
 Sec-Fetch-Site: same-origin
-Sec-Fetch-Mode: no-cors
-Sec-Fetch-Dest: script
+Sec-Fetch-Mode: cors
+Sec-Fetch-Dest: empty
 Referer: http://localhost:5000/
 Accept-Encoding: gzip, deflate, br
 
 HTTP/1.1 200 OK
-Content-Length: 187402
-Content-Type: text/javascript
+Content-Length: 316
+Content-Type: application/json
 Date: Fri, 26 Apr 2024 06:24:58 GMT
 Server: Kestrel
-Accept-Ranges: bytes
-Cache-Control: no-cache
-ETag: "1da611eb421750a"
-Last-Modified: Fri, 16 Feb 2024 21:25:46 GMT
+
+{"negotiateVersion":1,"connectionId":"************************","connectionToken":"************************","availableTransports":[{"transport":"WebSockets","transferFormats":["Text","Binary"]},{"transport":"ServerSentEvents","transferFormats":["Text"]},{"transport":"LongPolling","transferFormats":["Text","Binary"]}]}
 ```
 
 ```
 # Protocol switch to websocket (Missing Accept-Language header)
 
-GET /_blazor?id=tvYOMsAFFGNRH1nET5OU1Q HTTP/1.1
+GET /_blazor?id=************************ HTTP/1.1
 Host: localhost:5000
 Connection: Upgrade
 Pragma: no-cache
@@ -248,7 +264,7 @@ Upgrade: websocket
 Origin: http://localhost:5000
 Sec-WebSocket-Version: 13
 Accept-Encoding: gzip, deflate, br
-Sec-WebSocket-Key: n0qOtedXlKhLHXFnmoYYTw==
+Sec-WebSocket-Key: ************************
 Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits
 
 HTTP/1.1 101 Switching Protocols
@@ -256,5 +272,32 @@ Connection: Upgrade
 Date: Fri, 26 Apr 2024 06:24:58 GMT
 Server: Kestrel
 Upgrade: websocket
-Sec-WebSocket-Accept: B34rOSwgMkEL3OP6b1FVUB4chEk=
+Sec-WebSocket-Accept: ************************
+```
+
+### Correct behavior with regular Chrome (no call via Playwright)
+
+```
+# Protocol switch to websocket (including Accept-Language header)
+
+GET /_blazor?id=************************ HTTP/1.1
+Host: localhost:5000
+Connection: Upgrade
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+Upgrade: websocket
+Origin: http://localhost:5000
+Sec-WebSocket-Version: 13
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: de,en;q=0.9,en-GB;q=0.8,de-DE;q=0.7,en-US;q=0.6
+Sec-WebSocket-Key: ************************
+Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits
+
+HTTP/1.1 101 Switching Protocols
+Connection: Upgrade
+Date: Fri, 26 Apr 2024 15:14:59 GMT
+Server: Kestrel
+Upgrade: websocket
+Sec-WebSocket-Accept: ************************
 ```
