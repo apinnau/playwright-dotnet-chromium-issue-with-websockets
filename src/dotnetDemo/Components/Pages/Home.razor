@@ -1,0 +1,17 @@
+﻿@page "/"
+@using dotnetDemo.Components.I18n
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Home> Localizer
+@inject ILogger<Home> Logger
+
+<PageTitle>@Localizer["Title"]</PageTitle>
+
+@Localizer["MainText"]
+
+@code {
+    protected override void OnInitialized()
+    {
+        Logger.LogWarning(@Localizer["MainText"]);
+        Logger.LogWarning(@Localizer["Title"]);
+    }
+}
