@@ -1,5 +1,6 @@
 # playwright-dotnet-chromium-issue-with-websockets
 Demo application to reproduce issue with Chromium and websockets in Playwright for .NET
+Issue reported on 04/26/2024 (26.04.2024): https://github.com/microsoft/playwright/issues/30568
 
 ## How to build and run (Windows / Powershell)
 
